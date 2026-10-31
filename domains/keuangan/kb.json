@@ -1,0 +1,120 @@
+{
+  "domain": "Rekomendasi Produk Keuangan",
+  "next_id": 6,
+  "root": {
+    "id": "R0",
+    "conditions": [],
+    "conclusion": "Tabungan Reguler",
+    "cornerstone": null,
+    "parent_id": null,
+    "branch": null,
+    "exception_of": null,
+    "true_child": {
+      "id": "R1",
+      "conditions": [
+        {
+          "attr": "risiko",
+          "op": "==",
+          "value": "tinggi"
+        }
+      ],
+      "conclusion": "Saham",
+      "cornerstone": {
+        "umur": 30.0,
+        "gaji": 15.0,
+        "risiko": "tinggi",
+        "status": "pekerja"
+      },
+      "parent_id": "R0",
+      "branch": true,
+      "exception_of": "R0",
+      "true_child": {
+        "id": "R3",
+        "conditions": [
+          {
+            "attr": "status",
+            "op": "==",
+            "value": "pensiun"
+          }
+        ],
+        "conclusion": "Deposito",
+        "cornerstone": {
+          "umur": 60.0,
+          "gaji": 20.0,
+          "risiko": "tinggi",
+          "status": "pensiun"
+        },
+        "parent_id": "R1",
+        "branch": true,
+        "exception_of": "R1",
+        "true_child": null,
+        "false_child": {
+          "id": "R4",
+          "conditions": [
+            {
+              "attr": "gaji",
+              "op": "<=",
+              "value": 3.0
+            }
+          ],
+          "conclusion": "Reksadana",
+          "cornerstone": {
+            "umur": 22.0,
+            "gaji": 3.0,
+            "risiko": "tinggi",
+            "status": "pelajar"
+          },
+          "parent_id": "R3",
+          "branch": false,
+          "exception_of": "R1",
+          "true_child": null,
+          "false_child": null
+        }
+      },
+      "false_child": {
+        "id": "R2",
+        "conditions": [
+          {
+            "attr": "risiko",
+            "op": "==",
+            "value": "sedang"
+          }
+        ],
+        "conclusion": "Reksadana",
+        "cornerstone": {
+          "umur": 25.0,
+          "gaji": 8.0,
+          "risiko": "sedang",
+          "status": "pekerja"
+        },
+        "parent_id": "R1",
+        "branch": false,
+        "exception_of": "R0",
+        "true_child": {
+          "id": "R5",
+          "conditions": [
+            {
+              "attr": "gaji",
+              "op": ">=",
+              "value": 40.0
+            }
+          ],
+          "conclusion": "Obligasi",
+          "cornerstone": {
+            "umur": 50.0,
+            "gaji": 40.0,
+            "risiko": "sedang",
+            "status": "pekerja"
+          },
+          "parent_id": "R2",
+          "branch": true,
+          "exception_of": "R2",
+          "true_child": null,
+          "false_child": null
+        },
+        "false_child": null
+      }
+    },
+    "false_child": null
+  }
+}

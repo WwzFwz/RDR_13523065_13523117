@@ -1,0 +1,10 @@
+{
+  "name": "Rekomendasi Produk Keuangan",
+  "default_conclusion": "Tabungan Reguler",
+  "attributes": {
+    "umur": {"type": "numeric", "min": 17, "max": 100, "unit": "tahun"},
+    "gaji": {"type": "numeric", "min": 0, "unit": "juta/bulan"},
+    "risiko": {"type": "categorical", "values": ["rendah", "sedang", "tinggi"]},
+    "status": {"type": "categorical", "values": ["pelajar", "pekerja", "pensiun"]}
+  }
+}

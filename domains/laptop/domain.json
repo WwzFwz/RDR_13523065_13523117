@@ -1,0 +1,9 @@
+{
+  "name": "Rekomendasi Laptop",
+  "default_conclusion": "Laptop Entry-Level",
+  "attributes": {
+    "budget": {"type": "numeric", "min": 0, "unit": "juta"},
+    "kebutuhan": {"type": "categorical", "values": ["kantor", "programming", "desain", "gaming"]},
+    "mobilitas": {"type": "categorical", "values": ["rendah", "tinggi"]}
+  }
+}
