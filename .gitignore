@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.json.tmp
+domains/*/kb.*.bak.json
+docs/laporan/*.aux
+docs/laporan/*.log
+docs/laporan/*.out
+docs/laporan/*.toc
+docs/laporan/*.fls
+docs/laporan/*.fdb_latexmk
+docs/laporan/*.synctex.gz
+docs/laporan/*.lof
+docs/laporan/*.lot
+docs/laporan/build.log
+.claude/
