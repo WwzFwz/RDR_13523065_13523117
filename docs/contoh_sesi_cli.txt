@@ -1,0 +1,170 @@
+
+=== Rekomendasi Produk Keuangan | 1 rule | mode pakar ===
+  1. Konsultasi kasus baru
+  2. Tampilkan tree
+  3. Tampilkan daftar rule
+  4. Verifikasi KB (uji ulang semua cornerstone)
+  5. Tambah atribut
+  6. Ganti / buat domain
+  7. Reset KB
+  0. Keluar
+Pilih menu: 1
+
+Data konsumen:
+  umur (angka, 17..100, tahun): 30
+  gaji (angka, 0..inf, juta/bulan): 15
+  risiko (rendah/sedang/tinggi): tinggi
+  status (pelajar/pekerja/pensiun): pekerja
+
+Jalur penelusuran:
+  R0: IF true THEN Tabungan Reguler                      -> TRUE (ke anak kanan)
+
+REKOMENDASI: Tabungan Reguler   (dari R0)
+Pakar setuju? [y/n]: n
+Kesimpulan yang benar (ketik nomor atau teks baru, kosong = batal):
+> Saham
+
+Kesimpulan 'Tabungan Reguler' (R0) akan dianulir.
+R0 tidak punya cornerstone: semua kondisi kasus baru boleh dipilih.
+  Atribut | Kasus baru | Cornerstone R0
+  --------+------------+---------------
+  umur    | 30         | -             
+  gaji    | 15         | -             
+  risiko  | tinggi     | -             
+  status  | pekerja    | -             
+
+Difference list:
+  1. umur >= 30
+  2. umur <= 30
+  3. gaji >= 15
+  4. gaji <= 15
+  5. risiko == tinggi
+  6. status == pekerja
+Pilih nomor (pisahkan koma, digabung AND), 'k' = kondisi kustom, kosong = batal.
+> 5
+  Kondisi: risiko == tinggi
+  Sudah cukup? [y/n]: y
+
+Rule R1 ditambahkan: IF risiko == tinggi THEN Saham
+Ditempel di R0.trueChild, pengecualian dari R0.
+Rekomendasi untuk konsumen: Saham
+
+=== Rekomendasi Produk Keuangan | 2 rule | mode pakar ===
+  1. Konsultasi kasus baru
+  2. Tampilkan tree
+  3. Tampilkan daftar rule
+  4. Verifikasi KB (uji ulang semua cornerstone)
+  5. Tambah atribut
+  6. Ganti / buat domain
+  7. Reset KB
+  0. Keluar
+Pilih menu: 1
+
+Data konsumen:
+  umur (angka, 17..100, tahun): 60
+  gaji (angka, 0..inf, juta/bulan): 20
+  risiko (rendah/sedang/tinggi): tinggi
+  status (pelajar/pekerja/pensiun): pensiun
+
+Jalur penelusuran:
+  R0: IF true THEN Tabungan Reguler                      -> TRUE (ke anak kanan)
+  R1: IF risiko == tinggi THEN Saham                     -> TRUE (ke anak kanan)
+
+REKOMENDASI: Saham   (dari R1)
+Pakar setuju? [y/n]: n
+Kesimpulan yang benar (ketik nomor atau teks baru, kosong = batal):
+  1. Tabungan Reguler
+> Deposito
+
+Kesimpulan 'Saham' (R1) akan dianulir.
+  Atribut | Kasus baru | Cornerstone R1
+  --------+------------+---------------
+  umur    | 60         | 30            
+  gaji    | 20         | 15            
+  risiko  | tinggi     | tinggi        
+  status  | pensiun    | pekerja       
+
+Difference list:
+  1. umur > 30
+  2. umur >= 60
+  3. gaji > 15
+  4. gaji >= 20
+  5. status == pensiun
+  6. status != pekerja
+Pilih nomor (pisahkan koma, digabung AND), 'k' = kondisi kustom, kosong = batal.
+> 5
+  Kondisi: status == pensiun
+  Sudah cukup? [y/n]: y
+
+Rule R2 ditambahkan: IF status == pensiun THEN Deposito
+Ditempel di R1.trueChild, pengecualian dari R1.
+Rekomendasi untuk konsumen: Deposito
+
+=== Rekomendasi Produk Keuangan | 3 rule | mode pakar ===
+  1. Konsultasi kasus baru
+  2. Tampilkan tree
+  3. Tampilkan daftar rule
+  4. Verifikasi KB (uji ulang semua cornerstone)
+  5. Tambah atribut
+  6. Ganti / buat domain
+  7. Reset KB
+  0. Keluar
+Pilih menu: 1
+
+Data konsumen:
+  umur (angka, 17..100, tahun): 35
+  gaji (angka, 0..inf, juta/bulan): 25
+  risiko (rendah/sedang/tinggi): tinggi
+  status (pelajar/pekerja/pensiun): pekerja
+
+Jalur penelusuran:
+  R0: IF true THEN Tabungan Reguler                      -> TRUE (ke anak kanan)
+  R1: IF risiko == tinggi THEN Saham                     -> TRUE (ke anak kanan)
+  R2: IF status == pensiun THEN Deposito                 -> FALSE (ke anak kiri)
+
+REKOMENDASI: Saham   (dari R1)
+Pakar setuju? [y/n]: y
+Rekomendasi 'Saham' diberikan ke konsumen.
+
+=== Rekomendasi Produk Keuangan | 3 rule | mode pakar ===
+  1. Konsultasi kasus baru
+  2. Tampilkan tree
+  3. Tampilkan daftar rule
+  4. Verifikasi KB (uji ulang semua cornerstone)
+  5. Tambah atribut
+  6. Ganti / buat domain
+  7. Reset KB
+  0. Keluar
+Pilih menu: 2
+
+(T = anak kanan / true-child, F = anak kiri / false-child)
+R0 [true] -> Tabungan Reguler
+└─T─► R1 [risiko == tinggi] -> Saham
+      └─T─► R2 [status == pensiun] -> Deposito
+
+=== Rekomendasi Produk Keuangan | 3 rule | mode pakar ===
+  1. Konsultasi kasus baru
+  2. Tampilkan tree
+  3. Tampilkan daftar rule
+  4. Verifikasi KB (uji ulang semua cornerstone)
+  5. Tambah atribut
+  6. Ganti / buat domain
+  7. Reset KB
+  0. Keluar
+Pilih menu: 3
+  ID | Rule                               | Posisi | Pengecualian dari | Cornerstone                                    
+  ---+------------------------------------+--------+-------------------+------------------------------------------------
+  R0 | IF true THEN Tabungan Reguler      | root   | -                 | -                                              
+  R1 | IF risiko == tinggi THEN Saham     | R0.T   | R0                | umur=30, gaji=15, risiko=tinggi, status=pekerja
+  R2 | IF status == pensiun THEN Deposito | R1.T   | R1                | umur=60, gaji=20, risiko=tinggi, status=pensiun
+
+=== Rekomendasi Produk Keuangan | 3 rule | mode pakar ===
+  1. Konsultasi kasus baru
+  2. Tampilkan tree
+  3. Tampilkan daftar rule
+  4. Verifikasi KB (uji ulang semua cornerstone)
+  5. Tambah atribut
+  6. Ganti / buat domain
+  7. Reset KB
+  0. Keluar
+Pilih menu: 0

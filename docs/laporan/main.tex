@@ -1,0 +1,640 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[indonesian]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs,tabularx,longtable,array,multirow}
+\usepackage{xcolor,graphicx,float,caption}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.25}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\cond}[1]{\texttt{#1}}
+
+\floatname{algorithm}{Algoritma}
+\renewcommand{\algorithmicrequire}{\textbf{Masukan:}}
+\renewcommand{\algorithmicensure}{\textbf{Keluaran:}}
+\algrenewcommand\algorithmicif{\textbf{if}}
+\algrenewcommand\algorithmicthen{\textbf{then}}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+}
+
+% ------------------------------------------------------------------
+% TODO: lengkapi nama anggota dan mata kuliah.
+\title{\textbf{Sistem Pakar Rekomendasi Berbasis\\Ripple Down Rules (RDR)}\\[0.5em]
+\large Laporan Tugas \textless Nama Mata Kuliah\textgreater}
+\author{
+  \textless Nama Anggota 1\textgreater{} (13523065)\\
+  \textless Nama Anggota 2\textgreater{} (13523117)
+}
+\date{\today}
+% ------------------------------------------------------------------
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ==================================================================
+\section{Pendahuluan}
+
+\subsection{Deskripsi Tugas}
+Tugas ini meminta pembuatan sistem AI berbasis \emph{Ripple Down Rules} (RDR) yang dipakai
+seorang pakar untuk memberi rekomendasi kepada konsumen. Ketentuan utamanya:
+\begin{enumerate}[nosep]
+  \item Knowledge base (KB) awal hanya berisi satu rule, $t \rightarrow$ kesimpulan default,
+        yang dapat diisi sesuai domain masalah.
+  \item Kesimpulan diperoleh dengan menelusuri binary tree. Anak kanan (\emph{true-child})
+        adalah pengecualian yang dieksekusi jika kondisi node terpenuhi; anak kiri
+        (\emph{false-child}) dieksekusi jika kondisi tidak terpenuhi.
+  \item Kesimpulan yang diberikan adalah kesimpulan terakhir yang diperoleh selama penelusuran.
+  \item Jika pakar setuju, kesimpulan diberikan dan proses selesai. Jika tidak, dibuat rule
+        pengecualian baru dengan kesimpulan dari pakar. Kondisinya dipilih dari kondisi yang
+        dipenuhi kasus baru tetapi tidak dipenuhi kasus kunci (\emph{cornerstone case}) dari
+        kesimpulan yang dianulir.
+  \item Atribut dapat berjenis numerik maupun kategorikal.
+\end{enumerate}
+
+\subsection{Ringkasan Solusi}
+Kami membangun engine \emph{Single Classification RDR} (SCRDR) yang generik terhadap domain.
+Domain (nama, kesimpulan default, dan daftar atribut) dibaca dari file konfigurasi, sehingga
+sistem yang sama dapat dipakai untuk domain apa pun. Engine dilengkapi dua antarmuka:
+aplikasi web lokal (Streamlit) dengan visualisasi tree, dan mode terminal (CLI) yang dapat
+merekam sesi ke file teks. Domain contoh yang dipakai pada laporan ini adalah
+\emph{rekomendasi produk keuangan}.
+
+% ==================================================================
+\section{Dasar Teori}
+
+\subsection{Ripple Down Rules}
+Ripple Down Rules adalah metode akuisisi pengetahuan yang diperkenalkan oleh Compton dan
+Jansen. Alih-alih meminta pakar menyusun seluruh basis pengetahuan di awal, pengetahuan
+ditambahkan secara bertahap ketika sistem salah menangani suatu kasus. Pakar cukup
+menjelaskan \emph{apa yang membedakan} kasus baru dari kasus lama yang menjadi alasan rule
+sebelumnya dibuat. Pengetahuan lama tidak pernah diubah atau dihapus, hanya diberi
+pengecualian.
+
+\subsection{Struktur Single Classification RDR}
+Pada SCRDR, KB berbentuk binary tree. Setiap node menyimpan:
+\begin{itemize}[nosep]
+  \item \textbf{kondisi}: konjungsi kondisi atomik (root memiliki kondisi \emph{true});
+  \item \textbf{kesimpulan};
+  \item \textbf{cornerstone case}: kasus yang menyebabkan rule tersebut dibuat;
+  \item \textbf{true-child} (kanan): pengecualian, dikunjungi jika kondisi TRUE;
+  \item \textbf{false-child} (kiri): alternatif, dikunjungi jika kondisi FALSE.
+\end{itemize}
+
+Karena kondisi root selalu TRUE, false-child root tidak pernah dikunjungi. Seluruh rule yang
+menganulir kesimpulan default membentuk rantai false-child di bawah true-child root, yang dapat
+dibaca sebagai ``default, \emph{kecuali} $a \rightarrow X$, \emph{atau jika tidak}
+$e \rightarrow Y$, \ldots''.
+
+\subsection{Inferensi}
+Penelusuran dimulai dari root. Jika kondisi node terpenuhi, kesimpulannya dicatat lalu
+penelusuran berlanjut ke true-child; jika tidak, ke false-child. Penelusuran berhenti saat
+child yang dituju kosong. Kesimpulan akhir adalah kesimpulan node terakhir yang bernilai TRUE.
+
+\subsection{Akuisisi Pengetahuan dan Difference List}
+Saat pakar tidak setuju, dua node dari hasil penelusuran menjadi penting:
+\begin{itemize}[nosep]
+  \item \textbf{lastTrue}: node terakhir bernilai TRUE, yaitu pemberi kesimpulan yang salah.
+        \emph{Cornerstone} node ini menjadi pembanding.
+  \item \textbf{lastEval}: node terakhir yang dievaluasi. Node baru ditempel di sini, sebagai
+        true-child jika kondisinya TRUE atau false-child jika FALSE.
+\end{itemize}
+\emph{Difference list} adalah himpunan kondisi yang bernilai TRUE untuk kasus baru dan FALSE
+untuk cornerstone \textbf{lastTrue}. Dengan memilih kondisi dari daftar ini, cornerstone lama
+dijamin tetap mendapat kesimpulan lamanya, sehingga tidak terjadi regresi.
+
+Cornerstone \textbf{lastTrue} selalu mencapai posisi node baru: semua pengecualian
+\textbf{lastTrue} yang sudah ada dibuat agar FALSE untuk cornerstone tersebut, sehingga
+cornerstone itu menelusuri rantai pengecualian sampai ujung. Karena itu cukup cornerstone ini
+saja yang perlu dibedakan.
+
+% ==================================================================
+\section{Analisis dan Desain}
+
+\subsection{Arsitektur}
+Sistem dibagi menjadi tiga lapis yang terpisah:
+\begin{enumerate}[nosep]
+  \item \textbf{Engine} (\texttt{rdr/}): struktur data, inferensi, difference list, penambahan
+        rule, validasi, serta penyimpanan. Engine tidak bergantung pada antarmuka apa pun.
+  \item \textbf{Antarmuka}: aplikasi web Streamlit (\texttt{app.py}, \texttt{ui/}) dan mode
+        terminal (\texttt{cli.py}).
+  \item \textbf{Data}: satu folder per domain di \texttt{domains/}, berisi
+        \texttt{domain.json} (ditulis manusia) dan \texttt{kb.json} (ditulis sistem).
+\end{enumerate}
+
+\subsection{Struktur Data}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{lL}
+\toprule
+\textbf{Struktur} & \textbf{Isi} \\
+\midrule
+\texttt{Case} & Pemetaan nama atribut ke nilai (float untuk numerik, string untuk kategorikal). \\
+\texttt{Condition} & Tripel (atribut, operator, nilai). Operator numerik: \cond{>}, \cond{>=},
+  \cond{<}, \cond{<=}. Operator kategorikal: \cond{==}, \cond{!=}. Atribut yang tidak ada pada
+  kasus membuat kondisi bernilai FALSE. \\
+\texttt{Node} & id, daftar kondisi (AND), kesimpulan, cornerstone, true-child, false-child, serta
+  metadata posisi (parent, cabang) dan id node yang dianulir. \\
+\texttt{KnowledgeBase} & Root dan penghitung id; operasi \texttt{infer}, \texttt{add\_rule},
+  \texttt{difference\_list}, \texttt{verify}. \\
+\texttt{Domain} & Nama, kesimpulan default, dan daftar \texttt{Attribute} (nama, tipe, daftar
+  nilai opsional, min/max/satuan opsional). \\
+\bottomrule
+\end{tabularx}
+\caption{Struktur data utama}
+\end{table}
+
+\subsection{Konfigurasi Domain}
+Domain didefinisikan oleh \texttt{domain.json}. Informasi minimal yang diperlukan adalah
+kesimpulan default serta nama dan tipe setiap atribut. Tipe atribut diperlukan untuk
+menentukan operator kandidat dan cara membandingkan nilai.
+
+\begin{lstlisting}
+{
+  "name": "Rekomendasi Produk Keuangan",
+  "default_conclusion": "Tabungan Reguler",
+  "attributes": {
+    "umur":   {"type": "numeric", "min": 17, "max": 100, "unit": "tahun"},
+    "gaji":   {"type": "numeric", "min": 0, "unit": "juta/bulan"},
+    "risiko": {"type": "categorical", "values": ["rendah", "sedang", "tinggi"]},
+    "status": {"type": "categorical", "values": ["pelajar", "pekerja", "pensiun"]}
+  }
+}
+\end{lstlisting}
+
+Domain baru dapat dibuat lewat antarmuka (formulir di Streamlit atau wizard di CLI) maupun
+dengan menulis \texttt{domain.json} secara manual. Atribut baru dapat ditambahkan kapan saja.
+
+\subsection{Keputusan Desain dan Asumsi}
+Beberapa hal tidak dirinci oleh spesifikasi. Tabel~\ref{tab:asumsi} merangkum keputusan kami.
+
+\begin{longtable}{P{0.3\textwidth}P{0.64\textwidth}}
+\toprule
+\textbf{Aspek} & \textbf{Keputusan} \\
+\midrule
+\endhead
+Jumlah kondisi per rule & Boleh lebih dari satu (digabung AND). Setiap kondisi harus berasal
+  dari difference list. \\
+Pemilih kondisi & Pakar memilih dari difference list yang ditampilkan sistem. Sistem
+  memvalidasi pilihan. \\
+Kandidat kondisi numerik & Relatif terhadap cornerstone. Jika nilai kasus baru $v > c$
+  (nilai cornerstone): \cond{attr > c} (paling umum) dan \cond{attr >= v} (paling spesifik).
+  Jika $v < c$: \cond{attr < c} dan \cond{attr <= v}. Jika $v = c$: tidak ada kandidat.
+  Tanpa cornerstone: \cond{attr >= v} dan \cond{attr <= v}. \\
+Kandidat kondisi kategorikal & \cond{attr == v}, ditambah \cond{attr != c} jika nilai
+  cornerstone berbeda. \\
+Threshold kustom & Pakar boleh memasukkan kondisi sendiri (misalnya \cond{umur > 45}) selama
+  kondisi itu TRUE untuk kasus baru dan FALSE untuk cornerstone. \\
+Cornerstone root & Root tidak memiliki cornerstone, sehingga rule yang menganulir default boleh
+  memakai kondisi apa pun dari kasus baru. \\
+Difference list kosong & Disebut \emph{conflict}. Rule lama tidak diubah. Pakar dapat membatalkan
+  koreksi atau menambah atribut baru yang membedakan kedua kasus. \\
+Atribut baru & Cornerstone lama tidak memiliki nilai atribut tersebut, sehingga kondisi pada
+  atribut itu bernilai FALSE untuk cornerstone lama. \\
+Nilai kosong & Semua atribut wajib diisi saat konsultasi. \\
+Kesimpulan sama & Jika pakar memberi kesimpulan yang sama dengan sistem, dianggap setuju dan
+  tidak ada rule baru. \\
+Penulisan kesimpulan & Dinormalisasi (spasi, huruf besar/kecil) mengikuti kesimpulan yang
+  sudah ada, misalnya ``saham'' menjadi ``Saham''. \\
+Persistensi & KB disimpan otomatis ke \texttt{kb.json} setiap kali rule ditambahkan. Reset
+  membuat backup file lama. \\
+\bottomrule
+\caption{Keputusan desain dan asumsi}
+\label{tab:asumsi}
+\end{longtable}
+
+% ==================================================================
+\section{Algoritma}
+
+\begin{algorithm}[H]
+\caption{Inferensi}
+\begin{algorithmic}[1]
+\Require root KB, kasus $x$
+\Ensure kesimpulan, lastTrue, lastEval, lastResult, path
+\State $node \gets root$; \quad $lastTrue \gets root$; \quad $lastEval \gets root$
+\State $lastResult \gets$ \textbf{true}; \quad $path \gets [\,]$
+\While{$node \neq \textbf{null}$}
+  \State $lastEval \gets node$
+  \If{semua kondisi $node$ dipenuhi $x$}
+    \State $lastTrue \gets node$; \quad $lastResult \gets$ \textbf{true}
+    \State tambahkan $(node, \textbf{true})$ ke $path$
+    \State $node \gets node.trueChild$ \Comment{anak kanan: pengecualian}
+  \Else
+    \State $lastResult \gets$ \textbf{false}
+    \State tambahkan $(node, \textbf{false})$ ke $path$
+    \State $node \gets node.falseChild$ \Comment{anak kiri: alternatif}
+  \EndIf
+\EndWhile
+\State \Return $(lastTrue.conclusion, lastTrue, lastEval, lastResult, path)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Pembangkitan Difference List}
+\begin{algorithmic}[1]
+\Require kasus baru $x$, cornerstone $c$ (boleh \textbf{null}), domain
+\Ensure daftar kondisi pembeda
+\State $cand \gets [\,]$
+\For{setiap atribut $a$ pada domain}
+  \State $v \gets x[a]$; \quad $w \gets c[a]$ jika ada, selain itu \textbf{null}
+  \If{$a$ numerik}
+    \If{$w = \textbf{null}$} tambahkan $a \geq v$, $a \leq v$
+    \ElsIf{$v > w$} tambahkan $a > w$, $a \geq v$
+    \ElsIf{$v < w$} tambahkan $a < w$, $a \leq v$
+    \EndIf
+  \Else
+    \State tambahkan $a = v$
+    \If{$w \neq \textbf{null}$ \textbf{and} $w \neq v$} tambahkan $a \neq w$ \EndIf
+  \EndIf
+\EndFor
+\State \Return $[\,k \in cand \mid k(x) = \textbf{true} \wedge k(c) = \textbf{false}\,]$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Penambahan Rule}
+\begin{algorithmic}[1]
+\Require KB, kasus $x$, kesimpulan pakar $k$, kondisi terpilih $C$
+\State $(concl, lastTrue, lastEval, lastResult, \_) \gets \Call{Infer}{root, x}$
+\If{$k = concl$} \textbf{tolak}: kesimpulan sama \EndIf
+\If{$C$ kosong} \textbf{tolak}: minimal satu kondisi \EndIf
+\For{setiap $q \in C$}
+  \If{$q(x) = \textbf{false}$} \textbf{tolak}: tidak dipenuhi kasus baru \EndIf
+  \If{$q(lastTrue.cornerstone) = \textbf{true}$} \textbf{tolak}: cornerstone ikut teranulir \EndIf
+\EndFor
+\State $n \gets \Call{Node}{C, k, cornerstone = \text{salinan}(x)}$
+\If{$lastResult$}
+  \State $lastEval.trueChild \gets n$
+\Else
+  \State $lastEval.falseChild \gets n$
+\EndIf
+\State simpan KB
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Siklus Konsultasi}
+\begin{algorithmic}[1]
+\State muat domain dan KB (jika belum ada: $root \gets$ IF true THEN default)
+\Loop
+  \State $x \gets$ input data konsumen (divalidasi sesuai tipe atribut)
+  \State $res \gets \Call{Infer}{root, x}$; tampilkan kesimpulan dan jalur
+  \If{pakar setuju}
+    \State berikan $res.conclusion$ kepada konsumen
+  \Else
+    \State $k \gets$ kesimpulan yang benar dari pakar
+    \State $D \gets \Call{DifferenceList}{x, res.lastTrue.cornerstone}$
+    \While{$D$ kosong} \Comment{conflict}
+      \State pakar membatalkan, \textbf{atau} menambah atribut baru dan nilainya untuk $x$
+      \State $D \gets \Call{DifferenceList}{x, res.lastTrue.cornerstone}$
+    \EndWhile
+    \State $C \gets$ kondisi yang dipilih pakar dari $D$
+    \State \Call{AddRule}{x, k, C}; berikan $k$ kepada konsumen
+  \EndIf
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
+
+% ==================================================================
+\section{Implementasi}
+
+\subsection{Struktur Proyek}
+\begin{lstlisting}
+app.py               entry point Streamlit
+cli.py               mode terminal
+rdr/                 engine (tidak bergantung pada UI)
+  models.py          Condition, Node
+  engine.py          KnowledgeBase: infer(), add_rule(), verify()
+  difference.py      kandidat kondisi dan difference list
+  schema.py          Domain, Attribute, validasi kasus, load/save domain.json
+  storage.py         load/save/reset kb.json
+ui/                  halaman Streamlit
+domains/             satu folder per domain (domain.json, kb.json)
+scripts/             skenario demo
+tests/               pytest
+\end{lstlisting}
+
+\subsection{Antarmuka Web (Streamlit)}
+Aplikasi web terdiri dari empat tab:
+\begin{itemize}[nosep]
+  \item \textbf{Konsultasi}: formulir data konsumen yang dibangun otomatis dari schema domain.
+        Menampilkan rekomendasi, tabel jalur penelusuran, dan posisi kasus pada tree. Dalam mode
+        pakar tersedia tombol setuju/tidak setuju, pilihan kesimpulan, tabel perbandingan
+        kasus baru dengan cornerstone, difference list, kondisi kustom, pratinjau rule beserta
+        posisinya, dan penanganan conflict.
+  \item \textbf{Tree \& Rule}: visualisasi binary tree (anak kiri F berwarna merah, anak kanan
+        T berwarna hijau, jalur kasus terakhir disorot), daftar rule beserta cornerstone,
+        verifikasi KB, unduh \texttt{kb.json}, dan reset KB.
+  \item \textbf{Uji Batch (CSV)}: menjalankan inferensi untuk banyak kasus sekaligus.
+  \item \textbf{Domain \& Atribut}: melihat schema, mengubah default, menambah atribut, dan
+        membuat domain baru.
+\end{itemize}
+Sidebar berisi pemilihan domain dan toggle \emph{mode pakar}. Ketika toggle dimatikan, sistem
+berperan sebagai mode konsumen yang hanya menampilkan rekomendasi.
+
+% TODO: ganti kotak di bawah dengan screenshot aplikasi (simpan di images/).
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering Screenshot tab Konsultasi\\
+  (\texttt{images/konsultasi.png})}}
+\caption{Tab Konsultasi dalam mode pakar}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering Screenshot tab Tree \& Rule\\
+  (\texttt{images/tree.png})}}
+\caption{Visualisasi tree pada tab Tree \& Rule}
+\end{figure}
+
+\subsection{Mode Terminal (CLI)}
+Mode terminal menyediakan alur yang sama melalui menu teks: konsultasi, koreksi pakar,
+difference list bernomor, kondisi kustom, penanganan conflict, tree ASCII, daftar rule,
+verifikasi, penambahan atribut, serta pembuatan domain. Opsi \texttt{--log} merekam seluruh
+prompt dan jawaban ke file teks. Potongan rekaman sesi:
+
+\begin{lstlisting}
+Data konsumen:
+  umur (angka, 17..100, tahun): 60
+  gaji (angka, 0..inf, juta/bulan): 20
+  risiko (rendah/sedang/tinggi): tinggi
+  status (pelajar/pekerja/pensiun): pensiun
+
+Jalur penelusuran:
+  R0: IF true THEN Tabungan Reguler        -> TRUE (ke anak kanan)
+  R1: IF risiko == tinggi THEN Saham       -> TRUE (ke anak kanan)
+
+REKOMENDASI: Saham   (dari R1)
+Pakar setuju? [y/n]: n
+Kesimpulan yang benar (ketik nomor atau teks baru, kosong = batal):
+  1. Tabungan Reguler
+> Deposito
+
+Kesimpulan 'Saham' (R1) akan dianulir.
+  Atribut | Kasus baru | Cornerstone R1
+  --------+------------+---------------
+  umur    | 60         | 30
+  gaji    | 20         | 15
+  risiko  | tinggi     | tinggi
+  status  | pensiun    | pekerja
+
+Difference list:
+  1. umur > 30
+  2. umur >= 60
+  3. gaji > 15
+  4. gaji >= 20
+  5. status == pensiun
+  6. status != pekerja
+> 5
+  Kondisi: status == pensiun
+  Sudah cukup? [y/n]: y
+
+Rule R2 ditambahkan: IF status == pensiun THEN Deposito
+Ditempel di R1.trueChild, pengecualian dari R1.
+\end{lstlisting}
+
+\subsection{Cara Menjalankan}
+\begin{lstlisting}
+pip install -r requirements.txt
+streamlit run app.py                                   # aplikasi web
+python cli.py --domain keuangan                        # mode terminal (pakar)
+python cli.py --domain keuangan --consumer             # mode konsumen
+python cli.py --domain keuangan --log docs/sesi.txt    # rekam sesi
+python -m scripts.demo_scenario                        # jalankan skenario C1-C9
+python -m pytest                                       # pengujian
+\end{lstlisting}
+
+% ==================================================================
+\section{Pengujian}
+
+\subsection{Domain Uji}
+Domain rekomendasi produk keuangan memiliki kesimpulan default \emph{Tabungan Reguler} dan
+empat atribut: \texttt{umur} (numerik, tahun), \texttt{gaji} (numerik, juta/bulan),
+\texttt{risiko} (kategorikal: rendah, sedang, tinggi), dan \texttt{status} (kategorikal:
+pelajar, pekerja, pensiun). Pengujian dimulai dari KB yang hanya berisi
+$R0$: IF true THEN Tabungan Reguler.
+
+\subsection{Skenario Input dan Output}
+Tabel~\ref{tab:skenario} menunjukkan sembilan kasus yang dimasukkan secara berurutan. Notasi
+$R_i$(T) berarti kondisi $R_i$ terpenuhi sehingga penelusuran berlanjut ke anak kanan;
+$R_i$(F) berarti tidak terpenuhi sehingga berlanjut ke anak kiri.
+
+{\small
+\begin{longtable}{P{0.5cm}P{2.7cm}P{3.1cm}P{1.9cm}P{1.6cm}P{3.4cm}}
+\toprule
+\textbf{\#} & \textbf{Input (umur, gaji, risiko, status)} & \textbf{Jalur} &
+\textbf{Output sistem} & \textbf{Pakar} & \textbf{Aksi} \\
+\midrule
+\endhead
+C1 & 20, 2, rendah, pelajar & R0(T) & Tabungan Reguler & Setuju & -- \\
+C2 & 30, 15, tinggi, pekerja & R0(T) & Tabungan Reguler & Saham &
+  R1 di R0.trueChild \\
+C3 & 25, 8, sedang, pekerja & R0(T), R1(F) & Tabungan Reguler & Reksadana &
+  R2 di R1.falseChild \\
+C4 & 60, 20, tinggi, pensiun & R0(T), R1(T) & Saham & Deposito & R3 di R1.trueChild \\
+C5 & 35, 25, tinggi, pekerja & R0(T), R1(T), R3(F) & Saham & Setuju & -- \\
+C6 & 22, 3, tinggi, pelajar & R0(T), R1(T), R3(F) & Saham & Reksadana &
+  R4 di R3.falseChild \\
+C7 & 65, 2, tinggi, pensiun & R0(T), R1(T), R3(T) & Deposito & Setuju &
+  -- (R4 tidak dicek walau \cond{gaji <= 3} benar) \\
+C8 & 50, 40, sedang, pekerja & R0(T), R1(F), R2(T) & Reksadana & Obligasi &
+  R5 di R2.trueChild \\
+C9 & 30, 15, tinggi, pekerja & R0(T), R1(T), R3(F), R4(F) & Saham & Obligasi &
+  \textbf{Conflict}: difference list kosong \\
+\bottomrule
+\caption{Skenario pengujian C1--C9}
+\label{tab:skenario}
+\end{longtable}
+}
+
+\subsection{Pembentukan Rule}
+Tabel~\ref{tab:diff} menunjukkan difference list yang dihasilkan sistem untuk setiap koreksi
+dan kondisi yang dipilih pakar.
+
+{\small
+\begin{longtable}{P{0.8cm}P{1.4cm}P{3.2cm}P{4.6cm}P{3.2cm}}
+\toprule
+\textbf{Rule} & \textbf{Kasus} & \textbf{Pembanding} & \textbf{Difference list} &
+\textbf{Rule terbentuk} \\
+\midrule
+\endhead
+R1 & C2 & R0 (tanpa cornerstone) & \cond{umur >= 30}, \cond{umur <= 30}, \cond{gaji >= 15},
+  \cond{gaji <= 15}, \cond{risiko == tinggi}, \cond{status == pekerja} &
+  IF \cond{risiko == tinggi} THEN Saham \\
+R2 & C3 & R0 (tanpa cornerstone) & \cond{umur >= 25}, \cond{umur <= 25}, \cond{gaji >= 8},
+  \cond{gaji <= 8}, \cond{risiko == sedang}, \cond{status == pekerja} &
+  IF \cond{risiko == sedang} THEN Reksadana \\
+R3 & C4 & C2 (cornerstone R1) & \cond{umur > 30}, \cond{umur >= 60}, \cond{gaji > 15},
+  \cond{gaji >= 20}, \cond{status == pensiun}, \cond{status != pekerja} &
+  IF \cond{status == pensiun} THEN Deposito \\
+R4 & C6 & C2 (cornerstone R1) & \cond{umur < 30}, \cond{umur <= 22}, \cond{gaji < 15},
+  \cond{gaji <= 3}, \cond{status == pelajar}, \cond{status != pekerja} &
+  IF \cond{gaji <= 3} THEN Reksadana \\
+R5 & C8 & C3 (cornerstone R2) & \cond{umur > 25}, \cond{umur >= 50}, \cond{gaji > 8},
+  \cond{gaji >= 40} & IF \cond{gaji >= 40} THEN Obligasi \\
+-- & C9 & C2 (cornerstone R1) & \emph{kosong} & Conflict \\
+\bottomrule
+\caption{Difference list dan rule yang terbentuk}
+\label{tab:diff}
+\end{longtable}
+}
+
+Dua hal penting dari tabel di atas:
+\begin{itemize}[nosep]
+  \item \textbf{R2} ditempel di bawah R1 (karena R1 adalah lastEval), tetapi yang dianulir
+        adalah kesimpulan R0. Karena itu R2 dibandingkan dengan cornerstone R0, yang kosong.
+  \item \textbf{R4} ditempel di bawah R3 (lastEval), tetapi dibandingkan dengan cornerstone R1
+        (C2), bukan cornerstone R3. Cornerstone R3 (C4) bernilai TRUE di R3 sehingga tidak
+        pernah mencapai false-child R3.
+\end{itemize}
+
+\subsection{Tree Akhir}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  every node/.style={draw, rounded corners, align=center, font=\footnotesize,
+                     text width=2.7cm, inner sep=3pt, fill=gray!8},
+  tedge/.style={-{Stealth}, draw=green!50!black, thick},
+  fedge/.style={-{Stealth}, draw=red!70!black, thick},
+  lbl/.style={draw=none, fill=none, text width=, font=\scriptsize\bfseries}
+]
+\node[text width=3.3cm] (r0) at (0, 0) {R0\\\texttt{true}\\$\rightarrow$ Tabungan Reguler};
+\node (r1) at (3.4, -1.9)  {R1\\\texttt{risiko == tinggi}\\$\rightarrow$ Saham};
+\node (r2) at (0, -3.9)    {R2\\\texttt{risiko == sedang}\\$\rightarrow$ Reksadana};
+\node (r3) at (6.8, -3.9)  {R3\\\texttt{status == pensiun}\\$\rightarrow$ Deposito};
+\node (r5) at (1.7, -5.9)  {R5\\\texttt{gaji >= 40}\\$\rightarrow$ Obligasi};
+\node (r4) at (5.1, -5.9)  {R4\\\texttt{gaji <= 3}\\$\rightarrow$ Reksadana};
+\draw[tedge] (r0) -- node[lbl, above right, text=green!50!black] {T} (r1);
+\draw[fedge] (r1) -- node[lbl, above left, text=red!70!black] {F} (r2);
+\draw[tedge] (r1) -- node[lbl, above right, text=green!50!black] {T} (r3);
+\draw[tedge] (r2) -- node[lbl, above right, text=green!50!black] {T} (r5);
+\draw[fedge] (r3) -- node[lbl, above left, text=red!70!black] {F} (r4);
+\end{tikzpicture}
+\caption{Tree akhir setelah skenario C1--C9 (kiri = F/false-child, kanan = T/true-child)}
+\end{figure}
+
+\subsection{Uji Regresi Cornerstone}
+Setelah semua rule dibuat, setiap cornerstone ditelusuri ulang. Semuanya tetap berakhir di
+node yang dibuat untuknya, sehingga penambahan rule tidak merusak pengetahuan lama.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llll}
+\toprule
+\textbf{Cornerstone} & \textbf{Jalur pada tree akhir} & \textbf{Output} & \textbf{Sesuai} \\
+\midrule
+C2 (R1) & R0(T), R1(T), R3(F), R4(F) & Saham & Ya \\
+C3 (R2) & R0(T), R1(F), R2(T), R5(F) & Reksadana & Ya \\
+C4 (R3) & R0(T), R1(T), R3(T) & Deposito & Ya \\
+C6 (R4) & R0(T), R1(T), R3(F), R4(T) & Reksadana & Ya \\
+C8 (R5) & R0(T), R1(F), R2(T), R5(T) & Obligasi & Ya \\
+\bottomrule
+\end{tabular}
+\caption{Uji regresi cornerstone}
+\end{table}
+
+\subsection{Penanganan Conflict}
+Kasus C9 identik dengan cornerstone R1 (C2), tetapi pakar meminta kesimpulan \emph{Obligasi}.
+Tidak ada kondisi yang dapat membedakan keduanya, sehingga difference list kosong. Sistem
+menampilkan peringatan dan tidak mengubah rule lama. Pakar dapat membatalkan koreksi, atau
+menambah atribut baru, misalnya \texttt{tanggungan} (numerik) dengan nilai 2 untuk C9. Karena
+C2 tidak memiliki nilai \texttt{tanggungan}, kandidat \cond{tanggungan >= 2} dan
+\cond{tanggungan <= 2} bernilai FALSE untuk C2 dan dapat dipakai sebagai kondisi rule baru.
+Alur ini diuji otomatis pada \texttt{tests/test\_cli.py}.
+
+\subsection{Edge Case}
+\begin{longtable}{P{0.38\textwidth}P{0.56\textwidth}}
+\toprule
+\textbf{Situasi} & \textbf{Perilaku sistem} \\
+\midrule
+\endhead
+Input numerik bukan angka, di luar rentang, atau kategori di luar daftar & Ditolak dengan pesan
+  kesalahan; pada CLI ditanyakan ulang. \\
+Atribut belum diisi & Ditolak; semua atribut wajib diisi. \\
+Pakar memilih kondisi yang juga dipenuhi cornerstone & Ditolak karena cornerstone ikut
+  teranulir. \\
+Kondisi kustom tidak dipenuhi kasus baru & Ditolak. \\
+Kesimpulan koreksi sama dengan output sistem & Dianggap setuju, tidak ada rule baru. \\
+Kesimpulan diketik dengan ejaan berbeda (``saham '') & Dinormalisasi menjadi kesimpulan yang
+  sudah ada (``Saham''). \\
+Difference list kosong & Conflict: batal atau tambah atribut (lihat subbab sebelumnya). \\
+Urutan rule (C7) & R3 bernilai TRUE sehingga R4 di false-child R3 tidak dievaluasi. Ini
+  perilaku yang benar pada SCRDR. \\
+Kesimpulan default diubah & Aman karena root tidak memiliki cornerstone. \\
+\bottomrule
+\caption{Penanganan edge case}
+\end{longtable}
+
+\subsection{Pengujian Otomatis}
+Proyek dilengkapi 52 unit test (pytest) yang seluruhnya lulus. Cakupannya:
+\begin{itemize}[nosep]
+  \item evaluasi kondisi numerik dan kategorikal, termasuk atribut yang tidak ada;
+  \item pembangkitan difference list (dengan dan tanpa cornerstone, nilai sama, atribut baru);
+  \item inferensi dan penempatan node pada true-child maupun false-child;
+  \item validasi penambahan rule dan normalisasi kesimpulan;
+  \item simpan, muat, dan reset KB serta validasi schema domain;
+  \item skenario C1--C9 lengkap dengan bentuk tree akhir dan uji regresi;
+  \item smoke test antarmuka Streamlit dan alur CLI (termasuk conflict dan rekaman log).
+\end{itemize}
+
+% ==================================================================
+\section{Kesimpulan dan Saran}
+
+\subsection{Kesimpulan}
+Sistem pakar berbasis SCRDR berhasil dibangun sesuai spesifikasi. KB dimulai dari satu rule
+default dan berkembang melalui koreksi pakar. Setiap rule baru adalah pengecualian bagi
+kesimpulan yang salah, dengan kondisi yang dipilih dari difference list terhadap cornerstone.
+Engine bersifat generik terhadap domain dan mendukung atribut numerik maupun kategorikal.
+Pengujian skenario menunjukkan tidak ada regresi pada cornerstone lama.
+
+\subsection{Saran}
+\begin{itemize}[nosep]
+  \item Mendukung \emph{Multiple Classification RDR} agar satu kasus dapat memiliki lebih dari
+        satu kesimpulan.
+  \item Menyimpan kasus yang disetujui di root sebagai cornerstone tambahan, agar rule
+        pengecualian pertama tidak mengubah hasil kasus-kasus tersebut.
+  \item Menyediakan nilai atribut baru untuk cornerstone lama saat atribut ditambahkan.
+\end{itemize}
+
+% ==================================================================
+\section{Pembagian Kerja}
+% TODO: sesuaikan.
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Anggota} & \textbf{Tugas} \\
+\midrule
+\textless Nama Anggota 1\textgreater{} (13523065) & \ldots \\
+\textless Nama Anggota 2\textgreater{} (13523117) & \ldots \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{Lampiran}
+\begin{itemize}[nosep]
+  \item Repositori: \textless tautan repositori\textgreater
+  \item Contoh rekaman sesi CLI: \texttt{docs/contoh\_sesi\_cli.txt}
+\end{itemize}
+
+\end{document}
