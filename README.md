@@ -33,7 +33,7 @@ Browser akan terbuka di `http://localhost:8501`.
 | Konsultasi | Input data konsumen, lihat rekomendasi dan jalur penelusuran. Dalam mode pakar: setuju/tidak setuju, beri kesimpulan yang benar, pilih kondisi, tambah rule. |
 | Tree & Rule | Visualisasi binary tree, daftar rule beserta cornerstone, verifikasi KB, unduh `kb.json`, reset KB. |
 | Uji Batch (CSV) | Jalankan inferensi untuk banyak kasus sekaligus (tanpa menambah rule). |
-| Domain & Atribut | Lihat schema, ubah default, tambah atribut, buat domain baru. |
+| Domain & Atribut | Lihat schema, ubah default, tambah atribut. |
 
 Toggle **Mode pakar** di sidebar: aktif berarti pakar dapat mengoreksi dan menambah rule;
 nonaktif berarti mode konsumen yang hanya menampilkan rekomendasi.
@@ -91,7 +91,7 @@ Format `domain.json` (atribut boleh ditulis singkat `"nama": "numeric"`):
 - `values` pada atribut kategorikal bersifat opsional; tanpa `values`, nilainya bebas diketik.
 - `min`, `max`, `unit` pada atribut numerik bersifat opsional.
 
-**Membuat domain baru:** lewat tab *Domain & Atribut*, bagian *Buat domain baru*, atau
+**Membuat domain baru:** lewat tombol *➕ Buat domain baru* di sidebar (membuka halaman tersendiri), atau
 buat folder baru di `domains/` berisi `domain.json`.
 
 **Menambah atribut:** lewat tab *Domain & Atribut*, atau saat terjadi conflict (difference

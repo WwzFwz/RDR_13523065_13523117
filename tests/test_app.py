@@ -97,6 +97,8 @@ def test_invalid_input_shows_errors(app):
 
 def test_new_domain_requires_attributes(app):
     at, _ = app
+    button(at, "➕ Buat domain baru").click().run()
+    assert [t.label for t in at.tabs] == ["Buat Domain Baru"]
     at.text_input(key="new_domain_name").set_value("Rekomendasi Skincare")
     at.text_input(key="new_domain_default").set_value("Pelembap Umum")
     button(at, "Buat domain").click().run()

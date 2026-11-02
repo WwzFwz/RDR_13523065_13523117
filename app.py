@@ -26,8 +26,11 @@ if pending:
 with st.sidebar:
     st.title("Sistem Pakar RDR")
     names = {str(f): load_domain(f).name for f in folders}
-    selected = st.selectbox("Domain", list(names), format_func=names.get, key="domain_select")
+    selected = st.selectbox("Domain", list(names), format_func=names.get, key="domain_select",
+                            on_change=lambda: st.session_state.pop("creating_domain", None))
     state.use_domain(Path(selected))
+    if st.button("➕ Buat domain baru", width="stretch"):
+        st.session_state.creating_domain = True
 
     expert_mode = st.toggle("Mode pakar", value=True,
                             help="Aktif: pakar mengonfirmasi rekomendasi dan dapat menambah rule. "
@@ -37,6 +40,12 @@ with st.sidebar:
     st.metric("Jumlah rule", sum(1 for _ in kb.nodes()))
     st.caption(f"Default: {state.domain().default_conclusion}")
     st.caption(f"KB: `domains/{state.domain().folder.name}/kb.json`")
+
+if st.session_state.get("creating_domain"):
+    tab, = st.tabs(["Buat Domain Baru"])
+    with tab:
+        domain_page.render_new_domain()
+    st.stop()
 
 st.header(state.domain().name)
 tabs = st.tabs(["Konsultasi", "Tree & Rule", "Uji Batch (CSV)", "Domain & Atribut"])

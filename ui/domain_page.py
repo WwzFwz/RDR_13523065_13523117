@@ -1,4 +1,4 @@
-"""Halaman domain: lihat schema, ubah default, tambah atribut, buat domain baru."""
+"""Halaman domain: lihat schema, ubah default, tambah atribut; plus halaman buat domain baru."""
 
 from __future__ import annotations
 
@@ -51,13 +51,14 @@ def render() -> None:
                 state.reset_consult()
                 st.rerun()
 
-    st.divider()
-    render_new_domain()
-
 
 def render_new_domain() -> None:
+    """Halaman tersendiri, dibuka dari tombol di sidebar."""
     st.subheader("Buat domain baru")
     st.caption("Domain baru selalu dimulai dari satu rule: `IF true THEN <default>`.")
+    if st.button("Batal", key="cancel_new_domain"):
+        st.session_state.pop("creating_domain", None)
+        st.rerun()
     with st.form("new_domain_form"):
         c1, c2 = st.columns(2)
         name = c1.text_input("Nama domain", placeholder="mis. Rekomendasi Skincare",
@@ -90,6 +91,7 @@ def render_new_domain() -> None:
         return
     state.use_domain(folder)
     st.session_state.pending_domain = str(folder)
+    st.session_state.pop("creating_domain", None)
     st.rerun()
 
 
