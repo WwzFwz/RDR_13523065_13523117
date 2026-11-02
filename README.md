@@ -91,7 +91,8 @@ Format `domain.json` (atribut boleh ditulis singkat `"nama": "numeric"`):
 - `values` pada atribut kategorikal bersifat opsional; tanpa `values`, nilainya bebas diketik.
 - `min`, `max`, `unit` pada atribut numerik bersifat opsional.
 
-**Membuat domain baru:** lewat tombol *➕ Buat domain baru* di sidebar (membuka halaman tersendiri), atau
+**Membuat domain baru:** lewat tombol *➕ Buat domain baru* di sidebar (membuka halaman tersendiri: isi form, atau impor
+`domain.json` + `kb.json` opsional hasil unduhan; file divalidasi dan `verify()` harus lolos), atau
 buat folder baru di `domains/` berisi `domain.json`.
 
 **Menambah atribut:** lewat tab *Domain & Atribut*, atau saat terjadi conflict (difference

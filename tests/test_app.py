@@ -11,9 +11,9 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from rdr import Condition, KnowledgeBase, load_domain, save_kb
+from rdr import Condition, KnowledgeBase, ValidationError, load_domain, save_kb
 from scripts.demo_scenario import run
-from ui.domain_page import domain_from_table
+from ui.domain_page import domain_from_files, domain_from_table
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -115,3 +115,29 @@ def test_domain_from_table():
         "jenis_kulit": {"type": "categorical", "values": ["kering", "berminyak"]},
         "umur": {"type": "numeric", "min": 12.0, "unit": "tahun"},
     }
+
+
+def test_domain_from_files():
+    folder = ROOT / "domains" / "keuangan"
+    domain_bytes = (folder / "domain.json").read_bytes()
+    kb_data = json.loads((folder / "kb.json").read_text(encoding="utf-8"))
+
+    domain, kb = domain_from_files(domain_bytes, json.dumps(kb_data).encode())
+    assert domain.name and kb.root.true_child and not kb.verify()
+    assert domain_from_files(domain_bytes, None)[1] is None
+
+    with pytest.raises(ValidationError, match="domain.json tidak valid"):
+        domain_from_files(b"{rusak", None)
+    with pytest.raises(ValidationError, match="Upload|kb.json tidak valid"):
+        domain_from_files(domain_bytes, b"[]")
+
+    kb_data["root"]["true_child"]["conditions"][0]["attr"] = "tidak_ada"
+    with pytest.raises(ValidationError, match="tidak_ada"):
+        domain_from_files(domain_bytes, json.dumps(kb_data).encode())
+
+    kb_data = json.loads((folder / "kb.json").read_text(encoding="utf-8"))
+    kb_data["root"]["true_child"]["cornerstone"] = None  # R1 tetap valid, lalu rusak R1.true_child
+    child = kb_data["root"]["true_child"]["true_child"] or kb_data["root"]["true_child"]["false_child"]
+    child["cornerstone"] = {k: None for k in child["cornerstone"]}
+    with pytest.raises(ValidationError, match="Cornerstone"):
+        domain_from_files(domain_bytes, json.dumps(kb_data).encode())

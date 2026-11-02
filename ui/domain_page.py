@@ -5,7 +5,12 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from rdr import Domain, ValidationError, create_domain, format_value, save_domain
+import json
+from typing import Optional
+
+from rdr import (
+    Domain, KnowledgeBase, ValidationError, create_domain, format_value, save_domain, save_kb,
+)
 
 from . import state
 from .widgets import build_attribute, new_attribute_fields, parse_values, show_errors
@@ -80,12 +85,29 @@ def render_new_domain() -> None:
                 "satuan": st.column_config.TextColumn("Satuan"),
             },
         )
-        if not st.form_submit_button("Buat domain", type="primary"):
-            return
+        submitted = st.form_submit_button("Buat domain", type="primary")
+
+    with st.form("import_domain_form"):
+        st.markdown("**Atau impor dari file** (hasil unduhan / isi folder domain lain)")
+        st.caption("`kb.json` opsional; tanpa file ini domain dimulai dari `IF true THEN <default>`.")
+        domain_file = st.file_uploader("domain.json", type="json", key="import_domain_file")
+        kb_file = st.file_uploader("kb.json (opsional)", type="json", key="import_kb_file")
+        imported = st.form_submit_button("Impor domain")
 
     try:
-        folder = create_domain(state.domains_dir(),
-                               domain_from_table(name, default, table.to_dict("records")))
+        if submitted:
+            folder = create_domain(state.domains_dir(),
+                                   domain_from_table(name, default, table.to_dict("records")))
+        elif imported:
+            if domain_file is None:
+                raise ValidationError(["Upload domain.json terlebih dahulu"])
+            domain, kb = domain_from_files(domain_file.getvalue(),
+                                           kb_file.getvalue() if kb_file else None)
+            folder = create_domain(state.domains_dir(), domain)
+            if kb:
+                save_kb(kb, domain)
+        else:
+            return
     except ValidationError as e:
         show_errors(e.errors)
         return
@@ -93,6 +115,41 @@ def render_new_domain() -> None:
     st.session_state.pending_domain = str(folder)
     st.session_state.pop("creating_domain", None)
     st.rerun()
+
+
+def domain_from_files(domain_bytes: bytes,
+                      kb_bytes: Optional[bytes]) -> tuple[Domain, Optional[KnowledgeBase]]:
+    """Baca domain.json (+ kb.json) hasil upload; tolak sebelum ada yang ditulis ke disk."""
+    try:
+        domain = Domain.from_dict(json.loads(domain_bytes))
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        errors = e.errors if isinstance(e, ValidationError) else [f"domain.json tidak valid: {e}"]
+        raise ValidationError(errors)
+    if kb_bytes is None:
+        return domain, None
+    try:
+        kb = KnowledgeBase.from_dict(json.loads(kb_bytes))
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        raise ValidationError([f"kb.json tidak valid: {e}"])
+
+    names = {a.name for a in domain.attributes}
+    errors = [f"Rule {n.id} memakai atribut '{c.attr}' yang tidak ada di domain.json"
+              for n in kb.nodes() for c in n.conditions if c.attr not in names]
+    if kb.root.conditions:
+        errors.append("Root (R0) harus tanpa kondisi: IF true THEN <default>")
+    ids = [n.id for n in kb.nodes()]
+    if len(ids) != len(set(ids)):
+        errors.append("kb.json memuat id rule yang sama lebih dari sekali")
+    if errors:
+        raise ValidationError(errors)
+    kb.root.conclusion = domain.default_conclusion
+    errors = [f"Cornerstone {i.node.id} kini menghasilkan {i.got}, bukan rule-nya sendiri"
+              for i in kb.verify()]
+    if errors:
+        raise ValidationError(errors)
+    # Jaga agar rule berikutnya tidak memakai id yang sudah ada.
+    kb.next_id = max([kb.next_id] + [int(i[1:]) + 1 for i in ids if i[1:].isdigit()])
+    return domain, kb
 
 
 def domain_from_table(name: str, default: str, records: list[dict]) -> Domain:
