@@ -8,7 +8,7 @@ from rdr import Condition, RDRError, ValidationError, save_domain, separates
 from rdr.models import CATEGORICAL_OPS, NUMERIC_OPS
 
 from . import state
-from .tree_view import to_dot
+from .tree_view import show_tree
 from .widgets import (
     build_attribute, case_table, justification, new_attribute_fields, show_errors, value_input,
 )
@@ -48,7 +48,7 @@ def render(expert_mode: bool) -> None:
     with st.expander("Justifikasi: jalur penelusuran", expanded=True):
         justification(result)
     with st.expander("Posisi kasus pada tree", expanded=False):
-        st.graphviz_chart(to_dot(kb, result), width="stretch")
+        show_tree(kb, result, "consult_tree")
 
     if not expert_mode:
         return

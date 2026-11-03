@@ -10,7 +10,7 @@ import streamlit as st
 from rdr import format_value, reset_kb
 
 from . import state
-from .tree_view import to_dot
+from .tree_view import show_tree
 
 
 def render() -> None:
@@ -27,7 +27,7 @@ def render() -> None:
     st.subheader("Binary tree")
     st.caption("Anak kiri = **F** (false-child), anak kanan = **T** (true-child / pengecualian)."
                + (" Jalur kasus terakhir disorot; hijau = node pemberi kesimpulan." if result else ""))
-    st.graphviz_chart(to_dot(kb, result), width="stretch")
+    show_tree(kb, result, "kb_tree")
     with st.expander("Tree dalam bentuk teks"):
         st.code(kb.ascii_tree(), language=None)
 

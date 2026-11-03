@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from rdr import InferenceResult, KnowledgeBase
+import streamlit as st
+
+from rdr import InferenceResult, KnowledgeBase, Node
 
 TRUE_COLOR = "#2e7d32"
 FALSE_COLOR = "#c62828"
@@ -57,3 +59,20 @@ def to_dot(kb: KnowledgeBase, result: Optional[InferenceResult] = None) -> str:
             )
     lines.append("}")
     return "\n".join(lines)
+
+
+def _leaves(node: Node) -> int:
+    """Lebar tree dalam jumlah kolom daun (cabang kosong dihitung 1, sesuai node tak terlihat)."""
+    if not (node.true_child or node.false_child):
+        return 1
+    return sum(_leaves(c) if c else 1 for c in (node.false_child, node.true_child))
+
+
+def show_tree(kb: KnowledgeBase, result: Optional[InferenceResult], key: str) -> None:
+    """Tampilkan tree dengan zoom. Lebar tetap dalam piksel, jadi zoom-out browser ikut mengecilkan."""
+    c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
+    zoom = c1.slider("Zoom tree", 25, 300, 100, step=25, format="%d%%", key=f"{key}_zoom")
+    fit = c2.checkbox("Sesuaikan lebar halaman", key=f"{key}_fit")
+    # shortcut: ~150 px per kolom daun hanyalah perkiraan, 100% belum tentu persis ukuran asli.
+    width = "stretch" if fit else max(200, int(_leaves(kb.root) * 150 * zoom / 100))
+    st.graphviz_chart(to_dot(kb, result), width=width)

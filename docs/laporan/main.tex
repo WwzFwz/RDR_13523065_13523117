@@ -37,12 +37,12 @@
 }
 
 % ------------------------------------------------------------------
-% TODO: lengkapi nama anggota dan mata kuliah.
 \title{\textbf{Sistem Pakar Rekomendasi Berbasis\\Ripple Down Rules (RDR)}\\[0.5em]
-\large Laporan Tugas \textless Nama Mata Kuliah\textgreater}
+\large Laporan Tugas IF4070 Representasi Pengetahuan dan Penalaran\\[2em]
+\includegraphics[width=4.5cm]{logo_itb.png}}
 \author{
-  \textless Nama Anggota 1\textgreater{} (13523065)\\
-  \textless Nama Anggota 2\textgreater{} (13523117)
+  Dzaky Aurelia Fawwaz (13523065)\\
+  Ferdin Arsenarendra Purtadi (13523117)
 }
 \date{\today}
 % ------------------------------------------------------------------
@@ -346,25 +346,21 @@ Aplikasi web terdiri dari empat tab:
         T berwarna hijau, jalur kasus terakhir disorot), daftar rule beserta cornerstone,
         verifikasi KB, unduh \texttt{kb.json}, dan reset KB.
   \item \textbf{Uji Batch (CSV)}: menjalankan inferensi untuk banyak kasus sekaligus.
-  \item \textbf{Domain \& Atribut}: melihat schema, mengubah default, menambah atribut, dan
-        membuat domain baru.
+  \item \textbf{Domain \& Atribut}: melihat schema, mengubah default, dan menambah atribut.
 \end{itemize}
-Sidebar berisi pemilihan domain dan toggle \emph{mode pakar}. Ketika toggle dimatikan, sistem
+Sidebar berisi pemilihan domain, tombol \emph{Buat domain baru} (membuka halaman tersendiri untuk mengisi form atau mengimpor \texttt{domain.json} dan \texttt{kb.json}), serta toggle \emph{mode pakar}. Ketika toggle dimatikan, sistem
 berperan sebagai mode konsumen yang hanya menampilkan rekomendasi.
 
-% TODO: ganti kotak di bawah dengan screenshot aplikasi (simpan di images/).
 \begin{figure}[H]
 \centering
-\fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering Screenshot tab Konsultasi\\
-  (\texttt{images/konsultasi.png})}}
+\includegraphics[width=\textwidth]{images/konsultasi.png}
 \caption{Tab Konsultasi dalam mode pakar}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering Screenshot tab Tree \& Rule\\
-  (\texttt{images/tree.png})}}
-\caption{Visualisasi tree pada tab Tree \& Rule}
+\includegraphics[width=0.7\textwidth]{images/tree.png}
+\caption{Visualisasi tree pada tab Tree \& Rule: jalur kasus terakhir disorot kuning dan node pemberi kesimpulan (R5) berwarna hijau}
 \end{figure}
 
 \subsection{Mode Terminal (CLI)}
@@ -586,7 +582,7 @@ Kesimpulan default diubah & Aman karena root tidak memiliki cornerstone. \\
 \end{longtable}
 
 \subsection{Pengujian Otomatis}
-Proyek dilengkapi 52 unit test (pytest) yang seluruhnya lulus. Cakupannya:
+Proyek dilengkapi 53 unit test (pytest) yang seluruhnya lulus. Cakupannya:
 \begin{itemize}[nosep]
   \item evaluasi kondisi numerik dan kategorikal, termasuk atribut yang tidak ada;
   \item pembangkitan difference list (dengan dan tanpa cornerstone, nilai sama, atribut baru);
@@ -618,22 +614,34 @@ Pengujian skenario menunjukkan tidak ada regresi pada cornerstone lama.
 
 % ==================================================================
 \section{Pembagian Kerja}
-% TODO: sesuaikan.
+% Pembagian diundi acak: 8 paket kerja, masing-masing 4.
 \begin{table}[H]
 \centering
 \begin{tabular}{ll}
 \toprule
 \textbf{Anggota} & \textbf{Tugas} \\
 \midrule
-\textless Nama Anggota 1\textgreater{} (13523065) & \ldots \\
-\textless Nama Anggota 2\textgreater{} (13523117) & \ldots \\
+Dzaky Aurelia Fawwaz (13523065) &
+  \begin{minipage}[t]{0.6\textwidth}\begin{itemize}[nosep,leftmargin=*]
+    \item Engine inferensi dan penambahan rule
+    \item Schema domain dan penyimpanan KB
+    \item Antarmuka CLI
+    \item Unit test dan skenario C1--C9
+  \end{itemize}\end{minipage} \\[1em]
+Ferdin Arsenarendra Purtadi (13523117) &
+  \begin{minipage}[t]{0.6\textwidth}\begin{itemize}[nosep,leftmargin=*]
+    \item Difference list dan kandidat kondisi
+    \item UI Streamlit: konsultasi, tree, dan KB
+    \item UI Streamlit: domain, impor, dan uji batch
+    \item Laporan dan README
+  \end{itemize}\end{minipage} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \section*{Lampiran}
 \begin{itemize}[nosep]
-  \item Repositori: \textless tautan repositori\textgreater
+  \item Repositori: \url{https://github.com/WwzFwz/RDR_13523065_13523117}
   \item Contoh rekaman sesi CLI: \texttt{docs/contoh\_sesi\_cli.txt}
 \end{itemize}
 

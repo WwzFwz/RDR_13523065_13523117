@@ -12,6 +12,8 @@ from rdr.schema import list_domains
 from ui import batch_page, consult_page, domain_page, kb_page, state
 
 st.set_page_config(page_title="Sistem Pakar RDR", layout="wide")
+# Sembunyikan "Press Enter to submit form" bawaan Streamlit yang menimpa placeholder input.
+st.html("<style>[data-testid='InputInstructions'] { display: none; }</style>")
 
 folders = list_domains(state.domains_dir())
 if not folders:
